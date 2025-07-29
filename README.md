@@ -205,6 +205,8 @@ export BLOCKCHAIR_API_KEY="your-api-key-here"
 |----------|------------------|
 | **Discrete GPUs** | |
 | GTX 1060 | 100,000-500,000 |
+| **GTX 1650 Ti** | **200,000-800,000** |
+| **GTX 1650 Series** | **150,000-650,000** |
 | RTX 3070 | 500,000-2,000,000 |
 | RTX 4090 | 1,000,000-5,000,000 |
 | **Integrated Graphics** | |

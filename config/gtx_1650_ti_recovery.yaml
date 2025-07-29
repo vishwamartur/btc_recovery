@@ -1,0 +1,177 @@
+# Bitcoin Wallet Recovery Configuration for NVIDIA GTX 1650 Ti
+# Optimized for Turing architecture (sm_75) with 1024 CUDA cores and 4GB GDDR6
+
+# Wallet configuration
+wallet:
+  type: "bitcoin_core"  # wallet.dat files
+  path: ""  # Set this to your wallet.dat file path
+  backup_original: true
+
+# Password generation
+password_generation:
+  method: "hybrid"  # dictionary + brute_force
+  dictionary_file: "dictionaries/common_passwords.txt"
+  
+  # Character sets for brute force
+  charset: "mixed"  # lowercase, uppercase, digits, symbols
+  min_length: 6
+  max_length: 12
+  
+  # Pattern-based generation
+  patterns:
+    - "word+digits"      # password123
+    - "word+year"        # password2024
+    - "word+symbols"     # password!@#
+    - "capitalized+digits" # Password123
+
+# GTX 1650 Ti Optimized GPU Settings
+gpu:
+  enable_cuda: true
+  enable_opencl: false  # Use CUDA for better performance
+  
+  # Turing architecture specific settings
+  cuda:
+    device_id: 0  # Usually 0 for single GPU systems
+    threads_per_block: 256  # Optimal for Turing architecture
+    blocks_per_grid: 512    # 1024 CUDA cores / 2 for efficiency
+    shared_memory_size: 49152  # 48KB shared memory per SM
+    
+    # Memory management for 4GB GDDR6
+    batch_size: 75000       # Balanced for 4GB VRAM
+    memory_usage_ratio: 0.8 # Use 80% of 4GB = ~3.2GB
+    enable_unified_memory: false  # Discrete GPU
+    
+    # Stream configuration
+    stream_count: 4  # Multiple streams for better utilization
+    
+    # Advanced kernel parameters
+    kernel_parameters:
+      warps_per_sm: 32  # 16 SMs * 2 warps for GTX 1650 Ti
+      max_registers_per_thread: 255  # Turing register file
+      occupancy_target: 75  # Target 75% occupancy
+      memory_coalescing: 128  # 128-byte memory transactions
+      cache_preference: "L1"  # Prefer L1 cache for Turing
+
+# Performance tuning
+performance:
+  threads: 8  # CPU threads for non-GPU tasks
+  cpu_gpu_ratio: 0.1  # 10% CPU, 90% GPU (discrete GPU)
+  
+  # Thermal management
+  thermal_throttling: true
+  thermal_threshold: 83.0  # Turing thermal limit (°C)
+  power_limit: 55  # GTX 1650 Ti TDP (watts)
+  
+  # Performance monitoring
+  monitor_temperature: true
+  monitor_power_usage: true
+  performance_scaling_factor: 1.2  # Mid-range discrete performance
+
+# Blockchain API configuration for balance checking
+blockchain_apis:
+  primary_service: "blockstream"
+  fallback_services: ["blockchair", "blockcypher"]
+  
+  # API rate limiting
+  requests_per_minute: 60
+  retry_attempts: 3
+  timeout_seconds: 30
+  
+  # Optional API keys for higher limits
+  services:
+    blockcypher:
+      api_key: ""  # Set your BlockCypher API key here
+      requests_per_hour: 40000  # With API key
+    blockchair:
+      api_key: ""  # Set your Blockchair API key here
+      requests_per_day: 1440   # Free tier
+
+# Output configuration
+output:
+  # Multiple export formats
+  formats: ["text", "json", "csv", "electrum"]
+  
+  # File naming
+  base_filename: "gtx1650ti_recovery"
+  include_timestamp: true
+  
+  # Content options
+  include_empty_addresses: false
+  include_transaction_history: true
+  export_private_keys: true  # WIF format
+  export_public_keys: true
+
+# Logging
+logging:
+  level: "info"  # debug, info, warning, error
+  file: "logs/gtx1650ti_recovery.log"
+  console: true
+  
+  # Performance logging
+  log_performance_stats: true
+  stats_interval_seconds: 30
+
+# Recovery presets for different scenarios
+presets:
+  # Quick recovery with common passwords
+  quick:
+    password_generation:
+      method: "dictionary"
+      dictionary_file: "dictionaries/top_10000.txt"
+    gpu:
+      cuda:
+        batch_size: 50000
+        blocks_per_grid: 384
+    performance:
+      thermal_throttling: false
+  
+  # Comprehensive recovery (dictionary + brute force)
+  comprehensive:
+    password_generation:
+      method: "hybrid"
+      max_length: 14
+    gpu:
+      cuda:
+        batch_size: 75000
+        blocks_per_grid: 512
+    performance:
+      thermal_throttling: true
+  
+  # Power-efficient mode for laptops
+  laptop:
+    gpu:
+      cuda:
+        batch_size: 40000
+        blocks_per_grid: 256
+        memory_usage_ratio: 0.6
+    performance:
+      power_limit: 35  # Reduced power limit
+      thermal_threshold: 75.0  # Lower thermal threshold
+      cpu_gpu_ratio: 0.3  # More CPU usage to reduce GPU load
+
+# Advanced options
+advanced:
+  # Memory optimization
+  memory_pool_size: "2GB"  # Pre-allocate GPU memory
+  page_locked_memory: true  # Faster CPU-GPU transfers
+  
+  # Debugging
+  enable_profiling: false
+  save_intermediate_results: true
+  checkpoint_interval: 300  # Save progress every 5 minutes
+  
+  # Security
+  secure_memory_cleanup: true  # Clear sensitive data from memory
+  disable_swap: true  # Prevent swapping sensitive data to disk
+
+# Expected performance for GTX 1650 Ti
+# - Simple passwords (6-8 chars): 600,000-800,000 passwords/second
+# - Complex passwords (10-12 chars): 200,000-400,000 passwords/second
+# - Very complex passwords (14+ chars): 100,000-200,000 passwords/second
+# 
+# Factors affecting performance:
+# - Wallet encryption complexity
+# - Password character set size
+# - System thermal throttling
+# - Memory bandwidth utilization
+# - CUDA driver version

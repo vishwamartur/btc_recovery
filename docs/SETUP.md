@@ -21,8 +21,15 @@
 ### Recommended for High Performance
 - **CPU**: Intel Xeon or AMD EPYC with 16+ cores
 - **RAM**: 32GB+ for large-scale operations
-- **GPU**: NVIDIA GPU with CUDA Compute Capability 5.0+ (GTX 1060 or better)
+- **GPU**: NVIDIA GPU with CUDA Compute Capability 5.0+ (GTX 1650 Ti, GTX 1060 or better)
 - **Storage**: SSD for faster I/O operations
+
+### GTX 1650 Ti Specific Recommendations
+- **Optimal for**: Mid-range password recovery with excellent price/performance
+- **Expected Performance**: 200,000-800,000 passwords/second
+- **Memory**: 4GB GDDR6 allows for large batch processing
+- **Power Efficiency**: 55W TDP makes it suitable for laptops and compact systems
+- **Architecture**: Turing (sm_75) with modern CUDA features
 
 ## Dependencies
 
@@ -397,6 +404,40 @@ opencl:
 performance:
   cpu_gpu_ratio: 0.4  # Better GPU performance than Intel
   memory_usage_ratio: 0.6
+```
+
+**NVIDIA GTX 1650 Ti (Turing Architecture)**:
+```yaml
+# Optimized for GTX 1650 Ti - 1024 CUDA cores, 4GB GDDR6
+cuda:
+  threads_per_block: 256
+  blocks_per_grid: 512
+  shared_memory_size: 49152  # 48KB per SM
+  batch_size: 75000
+  memory_usage_ratio: 0.8
+  enable_unified_memory: false
+  stream_count: 4
+performance:
+  thermal_throttling: true
+  power_limit: 55  # watts
+  expected_performance: "200,000-800,000 passwords/second"
+```
+
+**NVIDIA GTX 1650 Series (Turing Architecture)**:
+```yaml
+# Optimized for GTX 1650 - 896 CUDA cores, 4GB GDDR6
+cuda:
+  threads_per_block: 256
+  blocks_per_grid: 448
+  shared_memory_size: 49152  # 48KB per SM
+  batch_size: 65000
+  memory_usage_ratio: 0.75
+  enable_unified_memory: false
+  stream_count: 4
+performance:
+  thermal_throttling: true
+  power_limit: 50  # watts
+  expected_performance: "150,000-650,000 passwords/second"
 ```
 
 **NVIDIA Tegra/Mobile**:

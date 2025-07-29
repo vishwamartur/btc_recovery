@@ -144,13 +144,22 @@ bool CUDAIntegratedManager::is_integrated_gpu(int device_id) {
         return true;
     }
 
+    // Check for GTX 1650 Ti and similar mid-range mobile GPUs
+    std::string name = props.name;
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    if (name.find("gtx") != std::string::npos && name.find("1650") != std::string::npos) {
+        // GTX 1650 series - treat as integrated for optimization purposes
+        // These are often found in laptops and benefit from integrated GPU optimizations
+        return true;
+    }
+
     // Check for mobile GPUs with shared memory architecture
     if (is_mobile_gpu(props) && has_unified_memory_architecture(props)) {
         return true;
     }
 
     // Check memory size - integrated GPUs typically have less dedicated memory
-    // or share system memory
+    // or share system memory. GTX 1650 Ti with 4GB is considered in this category
     size_t total_memory_gb = props.totalGlobalMem / (1024 * 1024 * 1024);
     if (total_memory_gb <= 4 && props.unifiedAddressing) {
         // Likely integrated or low-end mobile GPU
@@ -177,13 +186,24 @@ NVIDIAIntegratedType CUDAIntegratedManager::identify_nvidia_integrated_type(cons
         }
     }
 
+    // GTX 1650 Ti identification (specific model)
+    if (name.find("gtx") != std::string::npos && name.find("1650") != std::string::npos &&
+        name.find("ti") != std::string::npos) {
+        return NVIDIAIntegratedType::GTX_1650_TI;
+    }
+
+    // GTX 1650 series identification
+    if (name.find("gtx") != std::string::npos && name.find("1650") != std::string::npos) {
+        return NVIDIAIntegratedType::GTX_1650_SERIES;
+    }
+
     // MX series identification
     if (name.find("mx") != std::string::npos) {
         return NVIDIAIntegratedType::LAPTOP_MX_SERIES;
     }
 
     // Mobile GTX identification
-    if (name.find("gtx") != std::string::npos && 
+    if (name.find("gtx") != std::string::npos &&
         (name.find("mobile") != std::string::npos || name.find("m") != std::string::npos)) {
         return NVIDIAIntegratedType::LAPTOP_GTX_MOBILE;
     }
@@ -243,6 +263,10 @@ float CUDAIntegratedManager::estimate_tdp(const cudaDeviceProp& props, NVIDIAInt
             return 20.0f;
         case NVIDIAIntegratedType::TEGRA_ORIN:
             return 25.0f;
+        case NVIDIAIntegratedType::GTX_1650_TI:
+            return 55.0f;  // Mobile variant TDP
+        case NVIDIAIntegratedType::GTX_1650_SERIES:
+            return 50.0f;  // Average for GTX 1650 series
         case NVIDIAIntegratedType::LAPTOP_MX_SERIES:
             return 25.0f;
         case NVIDIAIntegratedType::LAPTOP_GTX_MOBILE:
@@ -312,6 +336,8 @@ void CUDAIntegratedManager::initialize_profiles() {
     profiles_.push_back(create_tegra_x2_profile());
     profiles_.push_back(create_tegra_xavier_profile());
     profiles_.push_back(create_tegra_orin_profile());
+    profiles_.push_back(create_gtx_1650_ti_profile());
+    profiles_.push_back(create_gtx_1650_series_profile());
     profiles_.push_back(create_mx_series_profile());
     profiles_.push_back(create_mobile_gtx_profile());
     profiles_.push_back(create_arm_integrated_profile());
@@ -353,6 +379,54 @@ CUDAIntegratedProfile CUDAIntegratedManager::create_tegra_orin_profile() {
 
     profile.kernel_parameters["max_registers_per_thread"] = 64;
     profile.kernel_parameters["occupancy_target"] = 75;
+
+    return profile;
+}
+
+CUDAIntegratedProfile CUDAIntegratedManager::create_gtx_1650_ti_profile() {
+    CUDAIntegratedProfile profile;
+    profile.name = "NVIDIA GTX 1650 Ti";
+    profile.recommended_threads_per_block = 256;  // Optimal for Turing architecture
+    profile.recommended_blocks_per_grid = 512;    // 1024 CUDA cores / 2 for efficiency
+    profile.recommended_shared_memory_size = 49152; // 48KB shared memory per SM
+    profile.max_batch_size = 75000;               // Balanced for 4GB VRAM
+    profile.memory_usage_ratio = 0.8f;            // 4GB GDDR6 - use 80%
+    profile.enable_unified_memory = false;        // Discrete GPU
+    profile.thermal_throttling_threshold = 83.0f; // Turing thermal limit
+    profile.power_limit_watts = 55.0f;            // Mobile variant TDP
+    profile.performance_scaling_factor = 1.2f;    // Mid-range discrete performance
+
+    // GTX 1650 Ti specific kernel parameters
+    profile.kernel_parameters["threads_per_warp"] = 32;
+    profile.kernel_parameters["warps_per_sm"] = 32;  // 16 SMs * 2 warps
+    profile.kernel_parameters["max_registers_per_thread"] = 255; // Turing register file
+    profile.kernel_parameters["occupancy_target"] = 75; // Target 75% occupancy
+    profile.kernel_parameters["memory_coalescing"] = 128; // 128-byte coalescing
+    profile.kernel_parameters["cache_preference"] = 1; // Prefer L1 cache
+
+    return profile;
+}
+
+CUDAIntegratedProfile CUDAIntegratedManager::create_gtx_1650_series_profile() {
+    CUDAIntegratedProfile profile;
+    profile.name = "NVIDIA GTX 1650 Series";
+    profile.recommended_threads_per_block = 256;  // Optimal for Turing architecture
+    profile.recommended_blocks_per_grid = 448;    // Slightly lower than Ti variant
+    profile.recommended_shared_memory_size = 49152; // 48KB shared memory per SM
+    profile.max_batch_size = 65000;               // Conservative for base model
+    profile.memory_usage_ratio = 0.75f;           // 4GB GDDR6 - conservative usage
+    profile.enable_unified_memory = false;        // Discrete GPU
+    profile.thermal_throttling_threshold = 83.0f; // Turing thermal limit
+    profile.power_limit_watts = 50.0f;            // Base model TDP
+    profile.performance_scaling_factor = 1.1f;    // Slightly lower than Ti
+
+    // GTX 1650 series specific kernel parameters
+    profile.kernel_parameters["threads_per_warp"] = 32;
+    profile.kernel_parameters["warps_per_sm"] = 28;  // 14 SMs * 2 warps
+    profile.kernel_parameters["max_registers_per_thread"] = 255; // Turing register file
+    profile.kernel_parameters["occupancy_target"] = 70; // Target 70% occupancy
+    profile.kernel_parameters["memory_coalescing"] = 128; // 128-byte coalescing
+    profile.kernel_parameters["cache_preference"] = 1; // Prefer L1 cache
 
     return profile;
 }

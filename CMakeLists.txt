@@ -150,7 +150,7 @@ if(CUDA_FOUND)
     # 53: Tegra X1, Jetson Nano, Shield TV
     # 60, 61, 62: Pascal (GTX 1000 series, Tegra X2, Jetson TX2)
     # 70, 72: Volta (Tegra Xavier, Jetson Xavier)
-    # 75: Turing (GTX 1600/RTX 2000 series, some mobile GPUs)
+    # 75: Turing (GTX 1650/1650 Ti, GTX 1660 series, RTX 2000 series)
     # 80, 86: Ampere (RTX 3000 series, some mobile GPUs)
     # 87: Tegra Orin, Jetson Orin
     # 89, 90: Ada Lovelace (RTX 4000 series)

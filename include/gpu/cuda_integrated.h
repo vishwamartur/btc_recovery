@@ -20,6 +20,8 @@ enum class NVIDIAIntegratedType {
     TEGRA_ORIN,         // NVIDIA Tegra Orin (Jetson Orin)
     LAPTOP_MX_SERIES,   // NVIDIA MX series in laptops (shared memory)
     LAPTOP_GTX_MOBILE,  // Mobile GTX with shared memory
+    GTX_1650_TI,        // NVIDIA GTX 1650 Ti (Turing mobile/desktop)
+    GTX_1650_SERIES,    // NVIDIA GTX 1650 series (Turing)
     ARM_INTEGRATED      // ARM-based NVIDIA integrated graphics
 };
 
@@ -165,6 +167,8 @@ private:
     CUDAIntegratedProfile create_tegra_x2_profile();
     CUDAIntegratedProfile create_tegra_xavier_profile();
     CUDAIntegratedProfile create_tegra_orin_profile();
+    CUDAIntegratedProfile create_gtx_1650_ti_profile();
+    CUDAIntegratedProfile create_gtx_1650_series_profile();
     CUDAIntegratedProfile create_mx_series_profile();
     CUDAIntegratedProfile create_mobile_gtx_profile();
     CUDAIntegratedProfile create_arm_integrated_profile();

@@ -172,6 +172,74 @@ nvidia:
       thermal_throttling: true
       power_limit: 25  # watts
 
+  # NVIDIA GTX 1650 Ti (Turing Mobile/Desktop)
+  gtx_1650_ti:
+    name: "NVIDIA GTX 1650 Ti"
+    specifications:
+      architecture: "Turing"
+      cuda_cores: 1024
+      memory_gb: 4
+      memory_type: "GDDR6"
+      memory_bus_width: 128
+      base_clock_mhz: 1350
+      boost_clock_mhz: 1485
+      tdp_watts: 55
+      compute_capability: "7.5"
+    cuda:
+      threads_per_block: 256
+      blocks_per_grid: 512
+      shared_memory_size: 49152
+      batch_size: 75000
+      memory_usage_ratio: 0.8
+      enable_unified_memory: false
+      stream_count: 4
+      kernel_parameters:
+        warps_per_sm: 32
+        max_registers_per_thread: 255
+        occupancy_target: 75
+        memory_coalescing: 128
+        cache_preference: "L1"
+    performance:
+      threads: 8
+      cpu_gpu_ratio: 0.1  # 10% CPU, 90% GPU (discrete GPU)
+      thermal_throttling: true
+      power_limit: 55  # watts
+      expected_passwords_per_second: 500000  # 200K-800K range
+
+  # NVIDIA GTX 1650 Series (Turing)
+  gtx_1650_series:
+    name: "NVIDIA GTX 1650 Series"
+    specifications:
+      architecture: "Turing"
+      cuda_cores: 896
+      memory_gb: 4
+      memory_type: "GDDR6"
+      memory_bus_width: 128
+      base_clock_mhz: 1485
+      boost_clock_mhz: 1665
+      tdp_watts: 50
+      compute_capability: "7.5"
+    cuda:
+      threads_per_block: 256
+      blocks_per_grid: 448
+      shared_memory_size: 49152
+      batch_size: 65000
+      memory_usage_ratio: 0.75
+      enable_unified_memory: false
+      stream_count: 4
+      kernel_parameters:
+        warps_per_sm: 28
+        max_registers_per_thread: 255
+        occupancy_target: 70
+        memory_coalescing: 128
+        cache_preference: "L1"
+    performance:
+      threads: 8
+      cpu_gpu_ratio: 0.1  # 10% CPU, 90% GPU (discrete GPU)
+      thermal_throttling: true
+      power_limit: 50  # watts
+      expected_passwords_per_second: 400000  # 150K-650K range
+
 # Apple Silicon Presets
 apple:
   # Apple M1 GPU
