@@ -5,7 +5,12 @@
 [![CUDA](https://img.shields.io/badge/CUDA-11.8+-green.svg)](https://developer.nvidia.com/cuda-toolkit)
 [![OpenCL](https://img.shields.io/badge/OpenCL-2.0+-orange.svg)](https://www.khronos.org/opencl/)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey.svg)](https://github.com/vishwamartur/btc_recovery)
-[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/vishwamartur/btc_recovery)
+
+[![CI/CD Pipeline](https://github.com/vishwamartur/btc_recovery/actions/workflows/ci.yml/badge.svg)](https://github.com/vishwamartur/btc_recovery/actions/workflows/ci.yml)
+[![Code Quality](https://github.com/vishwamartur/btc_recovery/actions/workflows/code-quality.yml/badge.svg)](https://github.com/vishwamartur/btc_recovery/actions/workflows/code-quality.yml)
+[![Documentation](https://github.com/vishwamartur/btc_recovery/actions/workflows/docs.yml/badge.svg)](https://github.com/vishwamartur/btc_recovery/actions/workflows/docs.yml)
+[![Release](https://github.com/vishwamartur/btc_recovery/actions/workflows/release.yml/badge.svg)](https://github.com/vishwamartur/btc_recovery/actions/workflows/release.yml)
+[![Codecov](https://codecov.io/gh/vishwamartur/btc_recovery/branch/main/graph/badge.svg)](https://codecov.io/gh/vishwamartur/btc_recovery)
 
 A high-performance, multi-threaded Bitcoin wallet password recovery system with GPU acceleration and integrated graphics support. Designed for legitimate wallet recovery purposes with **no blockchain download required** for Bitcoin Core wallet.dat files.
 
@@ -19,6 +24,7 @@ A high-performance, multi-threaded Bitcoin wallet password recovery system with 
 - [Installation](#-installation)
 - [Usage Examples](#-usage-examples)
 - [Performance](#-performance)
+- [Continuous Integration](#-continuous-integration)
 - [Documentation](#-documentation)
 - [Contributing](#-contributing)
 - [License](#-license)
@@ -215,6 +221,35 @@ export BLOCKCHAIR_API_KEY="your-api-key-here"
 - **Start with dictionary attacks** before brute force
 - **Use integrated graphics** on laptops for power efficiency
 - **Configure API keys** to avoid rate limiting during balance checks
+
+## 🔄 Continuous Integration
+
+The project uses comprehensive GitHub Actions workflows for automated testing, quality assurance, and deployment:
+
+### CI/CD Pipeline
+- **Multi-platform builds**: Ubuntu 20.04/22.04, Windows 2022, macOS 12
+- **Multiple compilers**: GCC, Clang, MSVC
+- **GPU testing**: Both CUDA and OpenCL configurations
+- **Automated testing**: Unit tests with coverage reporting
+- **Dependency caching**: Faster builds with intelligent caching
+
+### Code Quality Assurance
+- **Static analysis**: cppcheck, clang-tidy, include-what-you-use
+- **Code formatting**: clang-format with consistent style
+- **Security scanning**: CodeQL and Semgrep vulnerability detection
+- **License compliance**: Automated license header verification
+
+### Automated Releases
+- **Multi-platform binaries**: Linux, Windows, macOS releases
+- **Docker images**: Multi-architecture container builds
+- **Release automation**: Automatic changelog and artifact generation
+- **Version management**: Semantic versioning with Git tags
+
+### Documentation Pipeline
+- **API documentation**: Automated Doxygen generation
+- **Link validation**: Markdown link checking and badge verification
+- **GitHub Pages**: Automatic documentation deployment
+- **Format validation**: Markdown linting and style checking
 
 ## 📚 Documentation
 

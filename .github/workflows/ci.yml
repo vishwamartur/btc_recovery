@@ -1,0 +1,274 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+  pull_request:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+
+env:
+  BUILD_TYPE: Release
+  CTEST_OUTPUT_ON_FAILURE: 1
+
+jobs:
+  # Build and test on multiple platforms
+  build-and-test:
+    name: Build & Test (${{ matrix.os }}, ${{ matrix.compiler }}, GPU: ${{ matrix.gpu }})
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, windows-2022, macos-12]
+        compiler: [gcc, clang]
+        gpu: [ON, OFF]
+        include:
+          # Ubuntu 20.04 configurations
+          - os: ubuntu-20.04
+            compiler: gcc
+            cc: gcc-9
+            cxx: g++-9
+          - os: ubuntu-20.04
+            compiler: clang
+            cc: clang-10
+            cxx: clang++-10
+          # Ubuntu 22.04 configurations
+          - os: ubuntu-22.04
+            compiler: gcc
+            cc: gcc-11
+            cxx: g++-11
+          - os: ubuntu-22.04
+            compiler: clang
+            cc: clang-14
+            cxx: clang++-14
+          # Windows configurations
+          - os: windows-2022
+            compiler: msvc
+            cc: cl
+            cxx: cl
+          # macOS configurations
+          - os: macos-12
+            compiler: clang
+            cc: clang
+            cxx: clang++
+        exclude:
+          # Exclude unsupported combinations
+          - os: windows-2022
+            compiler: gcc
+          - os: windows-2022
+            compiler: clang
+          - os: macos-12
+            compiler: gcc
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Cache dependencies (Linux)
+      if: runner.os == 'Linux'
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/vcpkg
+          /usr/local/share/vcpkg
+        key: ${{ runner.os }}-${{ matrix.compiler }}-deps-${{ hashFiles('**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.compiler }}-deps-
+
+    - name: Cache dependencies (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/cache@v3
+      with:
+        path: |
+          C:\vcpkg\installed
+          C:\Users\runneradmin\AppData\Local\vcpkg
+        key: ${{ runner.os }}-deps-${{ hashFiles('**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-deps-
+
+    - name: Cache dependencies (macOS)
+      if: runner.os == 'macOS'
+      uses: actions/cache@v3
+      with:
+        path: |
+          /usr/local/Cellar
+          ~/Library/Caches/Homebrew
+        key: ${{ runner.os }}-deps-${{ hashFiles('**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-deps-
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          libssl-dev \
+          libcurl4-openssl-dev \
+          libjsoncpp-dev \
+          pkg-config \
+          lcov \
+          gcovr
+        
+        # Install GPU dependencies if enabled
+        if [ "${{ matrix.gpu }}" == "ON" ]; then
+          sudo apt-get install -y \
+            opencl-headers \
+            ocl-icd-opencl-dev \
+            intel-opencl-icd
+        fi
+        
+        # Install specific compiler versions
+        if [ "${{ matrix.compiler }}" == "gcc" ]; then
+          sudo apt-get install -y ${{ matrix.cc }} ${{ matrix.cxx }}
+        elif [ "${{ matrix.compiler }}" == "clang" ]; then
+          sudo apt-get install -y ${{ matrix.cc }} ${{ matrix.cxx }}
+        fi
+
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        # Install vcpkg dependencies
+        vcpkg install openssl:x64-windows curl:x64-windows jsoncpp:x64-windows
+        
+        # Install CUDA if GPU is enabled
+        if ("${{ matrix.gpu }}" -eq "ON") {
+          # Download and install CUDA toolkit (simplified for CI)
+          Write-Host "CUDA installation would be performed here for GPU builds"
+        }
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew update
+        brew install cmake ninja openssl curl jsoncpp pkg-config
+        
+        # Install OpenCL headers if GPU is enabled
+        if [ "${{ matrix.gpu }}" == "ON" ]; then
+          brew install opencl-headers
+        fi
+
+    - name: Set up compiler environment
+      shell: bash
+      run: |
+        if [ "${{ runner.os }}" != "Windows" ]; then
+          echo "CC=${{ matrix.cc }}" >> $GITHUB_ENV
+          echo "CXX=${{ matrix.cxx }}" >> $GITHUB_ENV
+        fi
+
+    - name: Configure CMake
+      shell: bash
+      run: |
+        cmake_args="-DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}"
+        cmake_args="$cmake_args -DBUILD_TESTS=ON"
+        cmake_args="$cmake_args -DENABLE_COVERAGE=ON"
+        cmake_args="$cmake_args -DENABLE_GPU=${{ matrix.gpu }}"
+        
+        if [ "${{ matrix.gpu }}" == "ON" ]; then
+          cmake_args="$cmake_args -DENABLE_CUDA=ON -DENABLE_OPENCL=ON"
+        fi
+        
+        if [ "${{ runner.os }}" == "Windows" ]; then
+          cmake_args="$cmake_args -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        fi
+        
+        cmake -B build -G Ninja $cmake_args
+
+    - name: Build
+      run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+    - name: Run tests
+      working-directory: build
+      run: ctest --build-config ${{ env.BUILD_TYPE }} --parallel --verbose
+
+    - name: Generate coverage report (Linux only)
+      if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+      working-directory: build
+      run: |
+        gcovr --root .. --exclude '../tests/' --exclude '../examples/' \
+              --xml-pretty --xml coverage.xml \
+              --html-details coverage.html
+
+    - name: Upload coverage to Codecov
+      if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+      uses: codecov/codecov-action@v3
+      with:
+        file: build/coverage.xml
+        flags: unittests
+        name: codecov-${{ matrix.os }}-${{ matrix.compiler }}
+
+    - name: Upload build artifacts
+      if: success() || failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-${{ matrix.os }}-${{ matrix.compiler }}-gpu${{ matrix.gpu }}
+        path: |
+          build/btc-recovery*
+          build/examples/*
+          build/coverage.*
+        retention-days: 7
+
+  # Integration tests with real wallet files (if available)
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-22.04
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build-ubuntu-22.04-gcc-gpuOFF
+
+    - name: Run integration tests
+      run: |
+        chmod +x btc-recovery
+        # Run integration tests with test wallet files
+        echo "Integration tests would run here with test wallet files"
+        # ./btc-recovery --test-mode --wallet test_wallets/sample.dat
+
+  # Performance benchmarks
+  performance-tests:
+    name: Performance Benchmarks
+    runs-on: ubuntu-22.04
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build-ubuntu-22.04-gcc-gpuOFF
+
+    - name: Run performance benchmarks
+      run: |
+        chmod +x btc-recovery
+        # Run performance benchmarks
+        echo "Performance benchmarks would run here"
+        # ./btc-recovery --benchmark --output benchmark_results.json
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results
+        path: benchmark_results.json
+        retention-days: 30

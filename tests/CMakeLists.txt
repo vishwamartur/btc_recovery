@@ -39,6 +39,8 @@ target_link_libraries(btc_recovery_tests
     gtest
     ${CMAKE_THREAD_LIBS_INIT}
     ${OPENSSL_LIBRARIES}
+    ${CURL_LIBRARIES}
+    ${JSONCPP_LIBRARIES}
 )
 
 # Include directories
@@ -46,6 +48,12 @@ target_include_directories(btc_recovery_tests PRIVATE
     ../include
     ${OPENSSL_INCLUDE_DIR}
 )
+
+# Enable coverage for tests if requested
+if(ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(btc_recovery_tests PRIVATE --coverage -fprofile-arcs -ftest-coverage)
+    target_link_options(btc_recovery_tests PRIVATE --coverage)
+endif()
 
 # Add tests to CTest
 include(GoogleTest)

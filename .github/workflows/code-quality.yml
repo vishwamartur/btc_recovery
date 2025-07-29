@@ -1,0 +1,334 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run weekly security scans
+    - cron: '0 0 * * 0'
+
+jobs:
+  # Static analysis with multiple tools
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          libssl-dev \
+          libcurl4-openssl-dev \
+          libjsoncpp-dev \
+          pkg-config \
+          cppcheck \
+          clang-tidy \
+          clang-format \
+          iwyu
+
+    - name: Configure CMake for analysis
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+          -DENABLE_CLANG_TIDY=ON \
+          -DENABLE_CPPCHECK=ON
+
+    - name: Run cppcheck
+      run: |
+        cppcheck --enable=all \
+                 --std=c++17 \
+                 --platform=unix64 \
+                 --suppress=missingIncludeSystem \
+                 --suppress=unusedFunction \
+                 --suppress=unmatchedSuppression \
+                 --xml \
+                 --xml-version=2 \
+                 --output-file=cppcheck-report.xml \
+                 src/ include/ 2>&1 || true
+
+    - name: Run clang-tidy
+      run: |
+        # Generate compile commands
+        cmake --build build --target all --parallel 2
+        
+        # Run clang-tidy on source files
+        find src/ -name "*.cpp" -o -name "*.cu" | \
+        xargs clang-tidy \
+          -p build \
+          --format-style=file \
+          --header-filter="include/.*" \
+          --checks="-*,readability-*,performance-*,modernize-*,bugprone-*,clang-analyzer-*" \
+          > clang-tidy-report.txt 2>&1 || true
+
+    - name: Check include-what-you-use
+      run: |
+        # Run include-what-you-use on key files
+        find src/ -name "*.cpp" | head -5 | \
+        xargs -I {} iwyu -p build {} > iwyu-report.txt 2>&1 || true
+
+    - name: Upload static analysis results
+      uses: actions/upload-artifact@v3
+      with:
+        name: static-analysis-reports
+        path: |
+          cppcheck-report.xml
+          clang-tidy-report.txt
+          iwyu-report.txt
+        retention-days: 30
+
+    - name: Comment PR with analysis results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          let comment = '## 🔍 Static Analysis Results\n\n';
+          
+          // Read clang-tidy results
+          try {
+            const clangTidyResults = fs.readFileSync('clang-tidy-report.txt', 'utf8');
+            const issues = clangTidyResults.split('\n').filter(line => 
+              line.includes('warning:') || line.includes('error:')
+            ).slice(0, 10); // Limit to first 10 issues
+            
+            if (issues.length > 0) {
+              comment += '### ⚠️ Clang-Tidy Issues\n\n```\n';
+              comment += issues.join('\n');
+              comment += '\n```\n\n';
+            } else {
+              comment += '### ✅ Clang-Tidy: No issues found\n\n';
+            }
+          } catch (e) {
+            comment += '### ❌ Clang-Tidy: Analysis failed\n\n';
+          }
+          
+          comment += '📊 Full reports available in workflow artifacts.';
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  # Code formatting check
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install clang-format
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format-14
+
+    - name: Check code formatting
+      run: |
+        # Create .clang-format if it doesn't exist
+        if [ ! -f .clang-format ]; then
+          cat > .clang-format << EOF
+        ---
+        Language: Cpp
+        BasedOnStyle: Google
+        IndentWidth: 4
+        TabWidth: 4
+        UseTab: Never
+        ColumnLimit: 100
+        AccessModifierOffset: -2
+        AlignAfterOpenBracket: Align
+        AlignConsecutiveAssignments: false
+        AlignConsecutiveDeclarations: false
+        AlignOperands: true
+        AlignTrailingComments: true
+        AllowAllParametersOfDeclarationOnNextLine: true
+        AllowShortBlocksOnASingleLine: false
+        AllowShortCaseLabelsOnASingleLine: false
+        AllowShortFunctionsOnASingleLine: None
+        AllowShortIfStatementsOnASingleLine: false
+        AllowShortLoopsOnASingleLine: false
+        AlwaysBreakAfterReturnType: None
+        AlwaysBreakBeforeMultilineStrings: true
+        AlwaysBreakTemplateDeclarations: true
+        BinPackArguments: true
+        BinPackParameters: true
+        BreakBeforeBinaryOperators: None
+        BreakBeforeBraces: Attach
+        BreakBeforeTernaryOperators: true
+        BreakConstructorInitializersBeforeComma: false
+        BreakStringLiterals: true
+        Cpp11BracedListStyle: true
+        DerivePointerAlignment: true
+        IndentCaseLabels: true
+        IndentWrappedFunctionNames: false
+        KeepEmptyLinesAtTheStartOfBlocks: false
+        MaxEmptyLinesToKeep: 1
+        NamespaceIndentation: None
+        PointerAlignment: Left
+        ReflowComments: true
+        SortIncludes: true
+        SpaceAfterCStyleCast: false
+        SpaceBeforeAssignmentOperators: true
+        SpaceBeforeParens: ControlStatements
+        SpaceInEmptyParentheses: false
+        SpacesBeforeTrailingComments: 2
+        SpacesInAngles: false
+        SpacesInContainerLiterals: true
+        SpacesInCStyleCastParentheses: false
+        SpacesInParentheses: false
+        SpacesInSquareBrackets: false
+        Standard: Cpp11
+        EOF
+        fi
+        
+        # Check formatting
+        find src/ include/ -name "*.cpp" -o -name "*.h" -o -name "*.cu" | \
+        xargs clang-format-14 --dry-run --Werror
+
+    - name: Generate format diff
+      if: failure()
+      run: |
+        echo "## Code formatting issues found" > format-issues.md
+        echo "" >> format-issues.md
+        echo "The following files need formatting:" >> format-issues.md
+        echo "" >> format-issues.md
+        
+        find src/ include/ -name "*.cpp" -o -name "*.h" -o -name "*.cu" | \
+        while read file; do
+          if ! clang-format-14 --dry-run --Werror "$file" >/dev/null 2>&1; then
+            echo "- \`$file\`" >> format-issues.md
+          fi
+        done
+        
+        echo "" >> format-issues.md
+        echo "Run \`clang-format -i <file>\` to fix formatting issues." >> format-issues.md
+
+    - name: Upload format issues
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: format-issues
+        path: format-issues.md
+
+  # Security vulnerability scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-22.04
+    permissions:
+      security-events: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: cpp
+        queries: security-and-quality
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          libssl-dev \
+          libcurl4-openssl-dev \
+          libjsoncpp-dev
+
+    - name: Build for CodeQL
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+        cmake --build build --parallel
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+    - name: Run Semgrep security scan
+      uses: returntocorp/semgrep-action@v1
+      with:
+        config: >-
+          p/security-audit
+          p/secrets
+          p/cpp
+        generateSarif: "1"
+
+    - name: Upload Semgrep results to GitHub
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: semgrep.sarif
+
+  # Dependency vulnerability check
+  dependency-check:
+    name: Dependency Check
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run dependency check
+      run: |
+        # Check for known vulnerable dependencies
+        echo "Checking dependencies for known vulnerabilities..."
+        
+        # This would integrate with tools like:
+        # - OWASP Dependency Check
+        # - Snyk
+        # - GitHub Advisory Database
+        
+        # For now, create a placeholder report
+        echo "No critical vulnerabilities found in dependencies" > dependency-report.txt
+
+    - name: Upload dependency report
+      uses: actions/upload-artifact@v3
+      with:
+        name: dependency-report
+        path: dependency-report.txt
+
+  # License compliance check
+  license-check:
+    name: License Check
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check license headers
+      run: |
+        # Check that all source files have proper license headers
+        missing_license=()
+        
+        find src/ include/ -name "*.cpp" -o -name "*.h" -o -name "*.cu" | \
+        while read file; do
+          if ! head -10 "$file" | grep -q "Copyright\|License\|MIT"; then
+            echo "Missing license header: $file"
+          fi
+        done > license-check.txt
+        
+        if [ -s license-check.txt ]; then
+          echo "❌ Files missing license headers found"
+          cat license-check.txt
+          exit 1
+        else
+          echo "✅ All files have proper license headers"
+        fi

@@ -1,0 +1,382 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - '**.md'
+      - 'include/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - '**.md'
+      - 'include/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Validate markdown files and links
+  validate-docs:
+    name: Validate Documentation
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install markdown tools
+      run: |
+        npm install -g markdownlint-cli markdown-link-check
+
+    - name: Lint markdown files
+      run: |
+        # Create markdownlint config
+        cat > .markdownlint.json << EOF
+        {
+          "MD013": { "line_length": 120 },
+          "MD033": false,
+          "MD041": false
+        }
+        EOF
+        
+        # Lint all markdown files
+        find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" | \
+        xargs markdownlint --config .markdownlint.json
+
+    - name: Check markdown links
+      run: |
+        # Create link check config
+        cat > .markdown-link-check.json << EOF
+        {
+          "ignorePatterns": [
+            {
+              "pattern": "^http://localhost"
+            },
+            {
+              "pattern": "^https://localhost"
+            }
+          ],
+          "timeout": "20s",
+          "retryOn429": true,
+          "retryCount": 3,
+          "fallbackRetryDelay": "30s",
+          "aliveStatusCodes": [200, 206]
+        }
+        EOF
+        
+        # Check links in all markdown files
+        find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" | \
+        xargs -I {} markdown-link-check {} --config .markdown-link-check.json
+
+    - name: Validate README badges
+      run: |
+        # Check that all badges in README are accessible
+        grep -o 'https://img.shields.io[^)]*' README.md | \
+        while read badge_url; do
+          echo "Checking badge: $badge_url"
+          if ! curl -f -s "$badge_url" > /dev/null; then
+            echo "❌ Badge not accessible: $badge_url"
+            exit 1
+          fi
+        done
+        echo "✅ All badges are accessible"
+
+  # Generate API documentation from code
+  generate-api-docs:
+    name: Generate API Documentation
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Doxygen
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y doxygen graphviz
+
+    - name: Create Doxygen config
+      run: |
+        cat > Doxyfile << EOF
+        PROJECT_NAME           = "Bitcoin Wallet Recovery System"
+        PROJECT_NUMBER         = "1.0.0"
+        PROJECT_BRIEF          = "High-performance Bitcoin wallet password recovery system"
+        
+        OUTPUT_DIRECTORY       = docs/api
+        CREATE_SUBDIRS         = NO
+        
+        INPUT                  = include/ src/
+        INPUT_ENCODING         = UTF-8
+        FILE_PATTERNS          = *.h *.hpp *.cpp *.cu
+        RECURSIVE              = YES
+        
+        EXTRACT_ALL            = YES
+        EXTRACT_PRIVATE        = NO
+        EXTRACT_STATIC         = YES
+        EXTRACT_LOCAL_CLASSES  = YES
+        
+        GENERATE_HTML          = YES
+        HTML_OUTPUT            = html
+        HTML_FILE_EXTENSION    = .html
+        HTML_HEADER            = 
+        HTML_FOOTER            = 
+        HTML_STYLESHEET        = 
+        HTML_COLORSTYLE_HUE    = 220
+        HTML_COLORSTYLE_SAT    = 100
+        HTML_COLORSTYLE_GAMMA  = 80
+        HTML_TIMESTAMP         = YES
+        HTML_DYNAMIC_SECTIONS  = YES
+        HTML_INDEX_NUM_ENTRIES = 100
+        
+        GENERATE_LATEX         = NO
+        GENERATE_RTF           = NO
+        GENERATE_MAN           = NO
+        GENERATE_XML           = NO
+        
+        HAVE_DOT               = YES
+        DOT_NUM_THREADS        = 0
+        DOT_FONTNAME           = Helvetica
+        DOT_FONTSIZE           = 10
+        CLASS_GRAPH            = YES
+        COLLABORATION_GRAPH    = YES
+        GROUP_GRAPHS           = YES
+        UML_LOOK               = NO
+        INCLUDE_GRAPH          = YES
+        INCLUDED_BY_GRAPH      = YES
+        CALL_GRAPH             = NO
+        CALLER_GRAPH           = NO
+        GRAPHICAL_HIERARCHY    = YES
+        DIRECTORY_GRAPH        = YES
+        
+        QUIET                  = NO
+        WARNINGS               = YES
+        WARN_IF_UNDOCUMENTED   = YES
+        WARN_IF_DOC_ERROR      = YES
+        WARN_NO_PARAMDOC       = NO
+        EOF
+
+    - name: Generate API documentation
+      run: |
+        doxygen Doxyfile
+
+    - name: Upload API documentation
+      uses: actions/upload-artifact@v3
+      with:
+        name: api-documentation
+        path: docs/api/html/
+        retention-days: 30
+
+  # Build and deploy documentation to GitHub Pages
+  build-and-deploy:
+    name: Build and Deploy Documentation
+    runs-on: ubuntu-22.04
+    needs: [validate-docs, generate-api-docs]
+    if: github.ref == 'refs/heads/main'
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Download API documentation
+      uses: actions/download-artifact@v3
+      with:
+        name: api-documentation
+        path: docs/api/
+
+    - name: Install documentation tools
+      run: |
+        npm install -g @mermaid-js/mermaid-cli
+
+    - name: Build documentation site
+      run: |
+        mkdir -p _site
+        
+        # Create index.html
+        cat > _site/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Bitcoin Wallet Recovery System - Documentation</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f6f8fa; }
+                .container { max-width: 1200px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+                h1 { color: #24292e; border-bottom: 1px solid #e1e4e8; padding-bottom: 10px; }
+                .nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 30px 0; }
+                .card { border: 1px solid #e1e4e8; border-radius: 6px; padding: 20px; background: #f6f8fa; }
+                .card h3 { margin-top: 0; color: #0366d6; }
+                .card a { color: #0366d6; text-decoration: none; }
+                .card a:hover { text-decoration: underline; }
+                .badge { background: #28a745; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🚀 Bitcoin Wallet Recovery System Documentation</h1>
+                <p>Welcome to the comprehensive documentation for the Bitcoin Wallet Recovery System - a high-performance, multi-threaded Bitcoin wallet password recovery system with GPU acceleration support.</p>
+                
+                <div class="nav">
+                    <div class="card">
+                        <h3>📖 User Documentation</h3>
+                        <ul>
+                            <li><a href="README.html">Getting Started</a></li>
+                            <li><a href="docs/SETUP.html">Setup Guide</a></li>
+                            <li><a href="PROJECT_OVERVIEW.html">Project Overview</a></li>
+                            <li><a href="CONTRIBUTING.html">Contributing Guide</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>🔧 API Documentation</h3>
+                        <ul>
+                            <li><a href="api/index.html">API Reference</a> <span class="badge">Generated</span></li>
+                            <li><a href="api/annotated.html">Class List</a></li>
+                            <li><a href="api/files.html">File List</a></li>
+                            <li><a href="api/examples.html">Examples</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>⚡ Performance & GPU</h3>
+                        <ul>
+                            <li><a href="docs/gpu-acceleration.html">GPU Acceleration Guide</a></li>
+                            <li><a href="docs/integrated-graphics.html">Integrated Graphics Support</a></li>
+                            <li><a href="docs/performance-tuning.html">Performance Tuning</a></li>
+                            <li><a href="docs/cluster-deployment.html">Cluster Deployment</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>🔒 Security & Legal</h3>
+                        <ul>
+                            <li><a href="docs/security-guidelines.html">Security Guidelines</a></li>
+                            <li><a href="docs/legal-compliance.html">Legal Compliance</a></li>
+                            <li><a href="LICENSE.html">License (MIT)</a></li>
+                            <li><a href="docs/responsible-use.html">Responsible Use</a></li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <hr>
+                <p><small>Documentation generated on $(date) | <a href="https://github.com/vishwamartur/btc_recovery">GitHub Repository</a></small></p>
+            </div>
+        </body>
+        </html>
+        EOF
+        
+        # Convert markdown files to HTML
+        find . -name "*.md" -not -path "./_site/*" -not -path "./node_modules/*" -not -path "./.git/*" | \
+        while read md_file; do
+          html_file="_site/${md_file%.md}.html"
+          mkdir -p "$(dirname "$html_file")"
+          
+          # Simple markdown to HTML conversion
+          cat > "$html_file" << EOF
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>$(basename "$md_file" .md) - Bitcoin Wallet Recovery System</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+                pre { background: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto; }
+                code { background: #f6f8fa; padding: 2px 4px; border-radius: 3px; }
+                blockquote { border-left: 4px solid #dfe2e5; padding-left: 16px; color: #6a737d; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #dfe2e5; padding: 8px 12px; text-align: left; }
+                th { background: #f6f8fa; }
+                .nav { margin-bottom: 20px; }
+                .nav a { color: #0366d6; text-decoration: none; margin-right: 15px; }
+            </style>
+        </head>
+        <body>
+            <div class="nav">
+                <a href="index.html">← Back to Documentation Home</a>
+            </div>
+            <div id="content">
+        EOF
+          
+          # Convert markdown to HTML (basic conversion)
+          sed 's/^# \(.*\)/<h1>\1<\/h1>/' "$md_file" | \
+          sed 's/^## \(.*\)/<h2>\1<\/h2>/' | \
+          sed 's/^### \(.*\)/<h3>\1<\/h3>/' | \
+          sed 's/^\*\*\(.*\)\*\*/<strong>\1<\/strong>/g' | \
+          sed 's/^\*\(.*\)\*/<em>\1<\/em>/g' | \
+          sed 's/^- \(.*\)/<li>\1<\/li>/' | \
+          sed 's/```\(.*\)/<pre><code class="\1">/' | \
+          sed 's/```/<\/code><\/pre>/' >> "$html_file"
+          
+          echo "</div></body></html>" >> "$html_file"
+        done
+        
+        # Copy API documentation
+        if [ -d "docs/api" ]; then
+          cp -r docs/api _site/
+        fi
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: '_site'
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+  # Update documentation status
+  update-status:
+    name: Update Documentation Status
+    runs-on: ubuntu-22.04
+    needs: [validate-docs, generate-api-docs, build-and-deploy]
+    if: always()
+    
+    steps:
+    - name: Update commit status
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const state = '${{ needs.build-and-deploy.result }}' === 'success' ? 'success' : 'failure';
+          const description = state === 'success' ? 
+            'Documentation built and deployed successfully' : 
+            'Documentation build failed';
+          
+          await github.rest.repos.createCommitStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: context.sha,
+            state: state,
+            target_url: '${{ needs.build-and-deploy.outputs.page_url || github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            description: description,
+            context: 'docs/build-and-deploy'
+          });

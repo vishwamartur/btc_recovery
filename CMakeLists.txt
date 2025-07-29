@@ -20,6 +20,9 @@ option(ENABLE_CUDA "Enable CUDA support" ON)
 option(ENABLE_OPENCL "Enable OpenCL support" ON)
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_EXAMPLES "Build example programs" ON)
+option(ENABLE_COVERAGE "Enable code coverage" OFF)
+option(ENABLE_CLANG_TIDY "Enable clang-tidy" OFF)
+option(ENABLE_CPPCHECK "Enable cppcheck" OFF)
 
 # Find required packages
 find_package(Threads REQUIRED)
@@ -27,6 +30,27 @@ find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(JSONCPP jsoncpp)
+
+# Code coverage setup
+if(ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -fprofile-arcs -ftest-coverage")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+endif()
+
+# Static analysis tools
+if(ENABLE_CLANG_TIDY)
+    find_program(CLANG_TIDY_EXE NAMES "clang-tidy")
+    if(CLANG_TIDY_EXE)
+        set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
+    endif()
+endif()
+
+if(ENABLE_CPPCHECK)
+    find_program(CPPCHECK_EXE NAMES "cppcheck")
+    if(CPPCHECK_EXE)
+        set(CMAKE_CXX_CPPCHECK "${CPPCHECK_EXE};--enable=all;--std=c++17")
+    endif()
+endif()
 
 # Optional GPU support
 if(ENABLE_GPU)

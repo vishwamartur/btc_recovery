@@ -1,0 +1,316 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  BUILD_TYPE: Release
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Create release and build artifacts
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-22.04
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get version
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/}
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        # Generate release notes from commits since last tag
+        LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        if [ -n "$LAST_TAG" ]; then
+          COMMITS=$(git log --pretty=format:"- %s (%h)" $LAST_TAG..HEAD)
+        else
+          COMMITS=$(git log --pretty=format:"- %s (%h)" --max-count=20)
+        fi
+        
+        cat > release_notes.md << EOF
+        # Bitcoin Wallet Recovery System ${{ steps.get_version.outputs.version }}
+        
+        ## 🚀 What's New
+        
+        $COMMITS
+        
+        ## 📦 Downloads
+        
+        Choose the appropriate binary for your platform:
+        
+        - **Linux x64**: \`btc-recovery-linux-x64.tar.gz\`
+        - **Windows x64**: \`btc-recovery-windows-x64.zip\`
+        - **macOS x64**: \`btc-recovery-macos-x64.tar.gz\`
+        - **Docker Image**: \`docker pull ghcr.io/${{ github.repository }}:${{ steps.get_version.outputs.version }}\`
+        
+        ## 🔧 Installation
+        
+        ### Linux/macOS
+        \`\`\`bash
+        tar -xzf btc-recovery-*.tar.gz
+        cd btc-recovery
+        ./btc-recovery --help
+        \`\`\`
+        
+        ### Windows
+        \`\`\`cmd
+        # Extract btc-recovery-windows-x64.zip
+        btc-recovery.exe --help
+        \`\`\`
+        
+        ### Docker
+        \`\`\`bash
+        docker run --rm ghcr.io/${{ github.repository }}:${{ steps.get_version.outputs.version }} --help
+        \`\`\`
+        
+        ## ⚠️ Legal Notice
+        
+        This software is intended for legitimate wallet recovery only. Users must own the wallets they attempt to recover and comply with all applicable laws.
+        EOF
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.version }}
+        release_name: Bitcoin Wallet Recovery System ${{ steps.get_version.outputs.version }}
+        body_path: release_notes.md
+        draft: false
+        prerelease: false
+
+  # Build release binaries for each platform
+  build-release:
+    name: Build Release (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: create-release
+    
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux-x64
+            archive_cmd: tar -czf
+            archive_ext: tar.gz
+            binary_name: btc-recovery
+          - os: windows-2022
+            platform: windows-x64
+            archive_cmd: 7z a -tzip
+            archive_ext: zip
+            binary_name: btc-recovery.exe
+          - os: macos-12
+            platform: macos-x64
+            archive_cmd: tar -czf
+            archive_ext: tar.gz
+            binary_name: btc-recovery
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          libssl-dev \
+          libcurl4-openssl-dev \
+          libjsoncpp-dev \
+          pkg-config \
+          opencl-headers \
+          ocl-icd-opencl-dev
+
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        vcpkg install openssl:x64-windows curl:x64-windows jsoncpp:x64-windows
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake ninja openssl curl jsoncpp pkg-config opencl-headers
+
+    - name: Configure CMake
+      shell: bash
+      run: |
+        cmake_args="-DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}"
+        cmake_args="$cmake_args -DBUILD_TESTS=OFF"
+        cmake_args="$cmake_args -DBUILD_EXAMPLES=ON"
+        cmake_args="$cmake_args -DENABLE_GPU=ON"
+        cmake_args="$cmake_args -DENABLE_CUDA=OFF"  # Disable CUDA for release builds
+        cmake_args="$cmake_args -DENABLE_OPENCL=ON"
+        
+        if [ "${{ runner.os }}" == "Windows" ]; then
+          cmake_args="$cmake_args -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        fi
+        
+        cmake -B build -G Ninja $cmake_args
+
+    - name: Build
+      run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+    - name: Prepare release package
+      shell: bash
+      run: |
+        mkdir -p release-package
+        
+        # Copy main binary
+        if [ "${{ runner.os }}" == "Windows" ]; then
+          cp build/btc-recovery.exe release-package/
+        else
+          cp build/btc-recovery release-package/
+        fi
+        
+        # Copy examples
+        mkdir -p release-package/examples
+        cp build/examples/* release-package/examples/ 2>/dev/null || true
+        
+        # Copy configuration files
+        cp -r config release-package/
+        
+        # Copy documentation
+        cp README.md LICENSE CONTRIBUTING.md release-package/
+        cp -r docs release-package/ 2>/dev/null || true
+        
+        # Create version info
+        echo "${{ needs.create-release.outputs.version }}" > release-package/VERSION
+        echo "Built on: $(date)" >> release-package/BUILD_INFO
+        echo "Platform: ${{ matrix.platform }}" >> release-package/BUILD_INFO
+        echo "Commit: ${{ github.sha }}" >> release-package/BUILD_INFO
+
+    - name: Create archive
+      shell: bash
+      run: |
+        cd release-package
+        if [ "${{ runner.os }}" == "Windows" ]; then
+          7z a -tzip ../btc-recovery-${{ matrix.platform }}.${{ matrix.archive_ext }} *
+        else
+          tar -czf ../btc-recovery-${{ matrix.platform }}.${{ matrix.archive_ext }} *
+        fi
+
+    - name: Upload release asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: btc-recovery-${{ matrix.platform }}.${{ matrix.archive_ext }}
+        asset_name: btc-recovery-${{ matrix.platform }}.${{ matrix.archive_ext }}
+        asset_content_type: application/octet-stream
+
+  # Build and push Docker image
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-22.04
+    needs: create-release
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=tag
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=${{ needs.create-release.outputs.version }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Update release with Docker image info
+  update-release:
+    name: Update Release
+    runs-on: ubuntu-22.04
+    needs: [create-release, build-release, build-docker]
+    
+    steps:
+    - name: Update release description
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const release = await github.rest.repos.getRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            release_id: ${{ needs.create-release.outputs.release_id }}
+          });
+          
+          const updatedBody = release.data.body + `
+          
+          ## 🐳 Docker Image
+          
+          \`\`\`bash
+          docker pull ghcr.io/${{ github.repository }}:${{ needs.create-release.outputs.version }}
+          \`\`\`
+          
+          ## 📊 Release Statistics
+          
+          - **Platforms**: Linux x64, Windows x64, macOS x64
+          - **Docker**: Multi-architecture (amd64, arm64)
+          - **Build Date**: ${new Date().toISOString()}
+          - **Commit**: ${{ github.sha }}
+          `;
+          
+          await github.rest.repos.updateRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            release_id: ${{ needs.create-release.outputs.release_id }},
+            body: updatedBody
+          });
