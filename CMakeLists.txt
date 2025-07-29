@@ -24,6 +24,9 @@ option(BUILD_EXAMPLES "Build example programs" ON)
 # Find required packages
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(CURL REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JSONCPP jsoncpp)
 
 # Optional GPU support
 if(ENABLE_GPU)
@@ -103,6 +106,8 @@ add_executable(btc-recovery
 target_link_libraries(btc-recovery
     ${CMAKE_THREAD_LIBS_INIT}
     ${OPENSSL_LIBRARIES}
+    ${CURL_LIBRARIES}
+    ${JSONCPP_LIBRARIES}
 )
 
 if(CUDA_FOUND)

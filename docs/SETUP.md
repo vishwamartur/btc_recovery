@@ -158,6 +158,44 @@ batch_size: 10000
 use_gpu: true
 ```
 
+### Bitcoin Core wallet.dat Recovery
+For Bitcoin Core wallet.dat files, use the specialized configuration:
+```bash
+cp config/wallet_dat_recovery.yaml my_wallet_recovery.yaml
+```
+
+Key settings for wallet.dat recovery:
+```yaml
+# Wallet settings
+wallet:
+  file: "/path/to/wallet.dat"
+  type: "bitcoin_core"
+  backup_original: true
+
+# Blockchain API configuration (no blockchain download required)
+blockchain_apis:
+  primary: "blockstream"
+  services:
+    blockstream:
+      mainnet_url: "https://blockstream.info/api"
+      rate_limit: 10
+    blockcypher:
+      api_key: "your-api-key-here"  # Optional but recommended
+
+# Output formats
+output:
+  formats:
+    text:
+      enabled: true
+      filename: "recovery_results.txt"
+    json:
+      enabled: true
+      filename: "recovery_results.json"
+    electrum:
+      enabled: true
+      filename: "electrum_import.json"
+```
+
 ### Advanced Configuration Options
 
 #### Character Sets
@@ -379,6 +417,152 @@ performance:
 - **Balanced Mode**: Reduce performance by 20%, moderate throttling
 - **Performance Mode**: Full performance, higher thermal limits
 
+## Bitcoin Core wallet.dat Recovery
+
+### Overview
+This system can recover Bitcoin Core wallet.dat files **without requiring a full blockchain download** (400+ GB). It uses blockchain APIs to check balances and transaction history.
+
+### Prerequisites
+```bash
+# Install additional dependencies for wallet.dat recovery
+sudo apt-get install -y libcurl4-openssl-dev libjsoncpp-dev
+
+# Optional: Get API keys for higher rate limits
+# - BlockCypher: https://www.blockcypher.com/dev/
+# - Blockchair: https://blockchair.com/api
+```
+
+### Quick Start
+```bash
+# 1. Backup your wallet.dat file
+cp wallet.dat wallet.dat.backup
+
+# 2. Run recovery with specialized configuration
+./btc-recovery --config config/wallet_dat_recovery.yaml --wallet wallet.dat
+
+# 3. If password is known, skip to balance checking
+./btc-recovery --config config/wallet_dat_recovery.yaml --wallet wallet.dat --password "yourpassword"
+```
+
+### Recovery Workflow
+
+#### Step 1: Wallet Analysis
+```bash
+# Analyze wallet structure
+./btc-recovery --analyze-wallet wallet.dat
+```
+This will show:
+- Wallet format and encryption details
+- Number of encrypted keys found
+- Estimated recovery time per password
+
+#### Step 2: Password Recovery
+```bash
+# Dictionary attack with common passwords
+./btc-recovery --config config/wallet_dat_recovery.yaml --preset quick --wallet wallet.dat
+
+# Comprehensive recovery (dictionary + brute force)
+./btc-recovery --config config/wallet_dat_recovery.yaml --preset comprehensive --wallet wallet.dat
+
+# Custom password list
+./btc-recovery --wallet wallet.dat --passwords "password1,password2,password3"
+```
+
+#### Step 3: Key Extraction and Balance Checking
+Once the password is found, the system automatically:
+1. **Extracts all private keys** from the wallet.dat file
+2. **Generates Bitcoin addresses** (compressed and uncompressed)
+3. **Checks balances** using blockchain APIs (no blockchain download needed)
+4. **Exports results** in multiple formats
+
+#### Step 4: Import into Modern Wallet
+```bash
+# Import into Electrum (recommended)
+electrum --offline
+# File -> New/Restore -> Import Bitcoin addresses or private keys
+# Use the generated electrum_import.json file
+
+# Or import individual keys (WIF format)
+# Use the private keys from recovery_results.txt
+```
+
+### API Configuration
+
+#### Blockchain APIs (No API Key Required)
+- **Blockstream.info**: Free, reliable, no registration needed
+- **Blockchair.com**: Free with rate limits
+
+#### APIs with Optional Keys (Higher Limits)
+```yaml
+# config/wallet_dat_recovery.yaml
+blockchain_apis:
+  services:
+    blockcypher:
+      api_key: "your-blockcypher-api-key"  # 200 requests/hour -> 40,000/hour
+    blockchair:
+      api_key: "your-blockchair-api-key"   # 1,440 requests/day -> unlimited
+```
+
+#### Getting API Keys
+```bash
+# BlockCypher (recommended)
+# 1. Visit https://www.blockcypher.com/dev/
+# 2. Sign up for free account
+# 3. Get API token (40,000 requests/hour)
+
+# Blockchair
+# 1. Visit https://blockchair.com/api
+# 2. Contact for API key (higher limits available)
+```
+
+### Output Formats
+
+The recovery system generates multiple output formats:
+
+#### 1. Human-Readable Text (`recovery_results.txt`)
+```
+Address: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa
+Private Key (WIF): 5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ
+Balance: 0.00000000 BTC
+Transactions: 0
+```
+
+#### 2. JSON Format (`recovery_results.json`)
+```json
+{
+  "recovery_timestamp": "2024-01-15 10:30:00",
+  "total_addresses": 150,
+  "funded_addresses": 3,
+  "total_balance_btc": "0.12345678",
+  "addresses": [
+    {
+      "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+      "private_key_wif": "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ",
+      "balance_satoshis": 12345678,
+      "has_balance": true
+    }
+  ]
+}
+```
+
+#### 3. CSV Format (`recovery_results.csv`)
+```csv
+Address,Private_Key_WIF,Balance_BTC,Has_Balance
+1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa,5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ,0.12345678,true
+```
+
+#### 4. Electrum Import (`electrum_import.json`)
+```json
+{
+  "keystore": {
+    "type": "imported",
+    "keypairs": {
+      "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa": "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ"
+    }
+  }
+}
+```
+
 ## Cluster Deployment
 
 ### Local Cluster Setup
@@ -458,6 +642,33 @@ lsmod | grep nvidia  # Check if drivers are loaded
 # Out of memory
 # Reduce batch_size in configuration
 # Reduce gpu_threads for GPU operations
+```
+
+#### wallet.dat Recovery Issues
+```bash
+# Invalid wallet format
+# Check if file is actually a Bitcoin Core wallet.dat
+file wallet.dat  # Should show "Berkeley DB" format
+
+# Corrupted wallet file
+# Try with backup copy
+cp ~/.bitcoin/wallet.dat.backup ./wallet.dat
+
+# API rate limiting
+# Get API keys for higher limits
+# Or reduce request frequency in configuration
+
+# No private keys found
+# Wallet might be watch-only or use HD keys
+# Check Bitcoin Core version (older versions supported)
+
+# Balance check failures
+# Check network connectivity
+curl -s "https://blockstream.info/api/address/1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
+
+# Import failures in Electrum
+# Ensure using correct WIF format
+# Try importing individual keys instead of batch
 ```
 
 #### Performance Issues

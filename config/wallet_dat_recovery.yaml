@@ -1,0 +1,266 @@
+# Bitcoin Core wallet.dat Recovery Configuration
+
+# Wallet settings
+wallet:
+  file: ""  # Path to wallet.dat file
+  type: "bitcoin_core"
+  backup_original: true  # Create backup before recovery
+  
+# Recovery strategy
+recovery:
+  mode: "comprehensive"  # comprehensive, fast, custom
+  
+  # Password generation settings
+  passwords:
+    # Dictionary attack settings
+    dictionary:
+      enabled: true
+      files:
+        - "common_passwords.txt"
+        - "bitcoin_passwords.txt"
+        - "personal_passwords.txt"
+      
+      # Password transformation rules
+      rules:
+        - "append_numbers"      # password -> password123
+        - "append_years"        # password -> password2024
+        - "capitalize"          # password -> Password
+        - "uppercase"           # password -> PASSWORD
+        - "leet_speak"          # password -> p@ssw0rd
+        - "common_substitutions" # password -> passw0rd
+    
+    # Brute force settings
+    brute_force:
+      enabled: true
+      charset: "mixed"  # lowercase, uppercase, digits, symbols, mixed, custom
+      min_length: 6
+      max_length: 12
+      prefix: ""
+      suffix: ""
+      
+      # Common patterns to try first
+      patterns:
+        - "bitcoin*"
+        - "wallet*"
+        - "*123"
+        - "*2024"
+        - "*!"
+    
+    # Custom password list
+    custom:
+      enabled: true
+      passwords:
+        - "password"
+        - "123456"
+        - "password123"
+        - "bitcoin"
+        - "wallet"
+        - "mypassword"
+        - "test123"
+
+# Blockchain API configuration
+blockchain_apis:
+  # Primary API service (used first)
+  primary: "blockstream"
+  
+  # API endpoints and keys
+  services:
+    blockstream:
+      mainnet_url: "https://blockstream.info/api"
+      testnet_url: "https://blockstream.info/testnet/api"
+      rate_limit: 10  # requests per second
+      timeout: 30     # seconds
+      
+    blockchair:
+      mainnet_url: "https://api.blockchair.com/bitcoin"
+      testnet_url: "https://api.blockchair.com/bitcoin/testnet"
+      api_key: ""     # Optional, for higher rate limits
+      rate_limit: 5
+      timeout: 30
+      
+    blockcypher:
+      mainnet_url: "https://api.blockcypher.com/v1/btc/main"
+      testnet_url: "https://api.blockcypher.com/v1/btc/test3"
+      api_key: ""     # Recommended for higher rate limits
+      rate_limit: 3   # Without API key
+      timeout: 30
+      
+    # Custom API endpoint
+    custom:
+      enabled: false
+      url: ""
+      api_key: ""
+      headers: {}
+  
+  # Retry and fallback settings
+  retry:
+    max_attempts: 3
+    delay_seconds: 1
+    exponential_backoff: true
+    
+  # Balance checking options
+  balance_check:
+    enabled: true
+    check_all_addresses: true
+    minimum_balance: 0  # Only report addresses with balance > this (in satoshis)
+    include_zero_balance: true
+    
+# Network settings
+network:
+  testnet: false  # Set to true for testnet recovery
+  proxy:
+    enabled: false
+    host: ""
+    port: 0
+    username: ""
+    password: ""
+    
+# Performance settings
+performance:
+  threads: 0  # 0 = auto-detect CPU cores
+  batch_size: 1000
+  
+  # Memory usage
+  max_memory_usage: "2GB"
+  
+  # Progress reporting
+  progress_interval: 10  # seconds
+  
+  # GPU acceleration (if available)
+  gpu:
+    enabled: false  # wallet.dat recovery is primarily CPU-bound
+    device_id: 0
+
+# Output settings
+output:
+  # Export formats
+  formats:
+    text:
+      enabled: true
+      filename: "recovery_results.txt"
+      include_unfunded: true
+      
+    json:
+      enabled: true
+      filename: "recovery_results.json"
+      pretty_print: true
+      
+    csv:
+      enabled: true
+      filename: "recovery_results.csv"
+      include_headers: true
+      
+    electrum:
+      enabled: true
+      filename: "electrum_import.json"
+      funded_only: true  # Only export addresses with funds
+      
+  # Security settings
+  security:
+    encrypt_output: false
+    output_password: ""
+    secure_delete: true  # Securely delete temporary files
+    
+  # Logging
+  logging:
+    level: "info"  # debug, info, warn, error
+    file: "wallet_recovery.log"
+    console: true
+    
+# Recovery verification
+verification:
+  # Verify extracted keys
+  verify_key_pairs: true
+  verify_addresses: true
+  
+  # Cross-check with multiple APIs
+  cross_check_balances: true
+  
+  # Minimum confirmations for balance
+  min_confirmations: 1
+
+# Security and safety
+security:
+  # Backup settings
+  backup:
+    create_wallet_backup: true
+    backup_directory: "./backups"
+    timestamp_backups: true
+    
+  # Memory protection
+  memory:
+    clear_sensitive_data: true
+    disable_swap: false  # Requires root privileges
+    
+  # File permissions
+  file_permissions:
+    recovery_files: "600"  # Owner read/write only
+    log_files: "644"
+    
+# Advanced settings
+advanced:
+  # Berkeley DB parsing
+  bdb_parser:
+    strict_mode: false
+    skip_corrupted_pages: true
+    max_page_size: 65536
+    
+  # Key derivation
+  key_derivation:
+    pbkdf2_iterations: 25000  # Default for Bitcoin Core
+    memory_cost: 1024         # For scrypt (if used)
+    parallelization: 1        # For scrypt (if used)
+    
+  # Address generation
+  address_generation:
+    generate_compressed: true
+    generate_uncompressed: true
+    generate_segwit: false    # P2WPKH addresses (Bitcoin Core 0.16+)
+    generate_nested_segwit: false  # P2SH-P2WPKH addresses
+    
+# Presets for common scenarios
+presets:
+  # Quick recovery for known password patterns
+  quick:
+    recovery.mode: "fast"
+    passwords.dictionary.enabled: true
+    passwords.brute_force.enabled: false
+    blockchain_apis.balance_check.enabled: true
+    output.formats.electrum.enabled: true
+    
+  # Comprehensive recovery (slower but thorough)
+  comprehensive:
+    recovery.mode: "comprehensive"
+    passwords.dictionary.enabled: true
+    passwords.brute_force.enabled: true
+    passwords.brute_force.max_length: 10
+    blockchain_apis.balance_check.enabled: true
+    output.formats.text.enabled: true
+    output.formats.json.enabled: true
+    output.formats.csv.enabled: true
+    output.formats.electrum.enabled: true
+    
+  # Fast balance check only (password already known)
+  balance_check:
+    recovery.mode: "fast"
+    passwords.custom.enabled: true
+    blockchain_apis.balance_check.enabled: true
+    blockchain_apis.balance_check.check_all_addresses: true
+    output.formats.json.enabled: true
+
+# Usage examples in comments:
+#
+# Basic usage:
+# btc-recovery --config wallet_dat_recovery.yaml --wallet /path/to/wallet.dat
+#
+# Quick recovery with known password pattern:
+# btc-recovery --config wallet_dat_recovery.yaml --preset quick --wallet wallet.dat --prefix "mypassword"
+#
+# Comprehensive recovery:
+# btc-recovery --config wallet_dat_recovery.yaml --preset comprehensive --wallet wallet.dat
+#
+# Balance check only (password known):
+# btc-recovery --config wallet_dat_recovery.yaml --preset balance_check --wallet wallet.dat --password "knownpassword"
+#
+# Testnet recovery:
+# btc-recovery --config wallet_dat_recovery.yaml --wallet wallet.dat --testnet
