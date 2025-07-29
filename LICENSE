@@ -1,0 +1,67 @@
+MIT License
+
+Copyright (c) 2024 Bitcoin Wallet Recovery Project
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+IMPORTANT LEGAL NOTICE:
+
+This software is intended for legitimate wallet recovery purposes only. Users
+must comply with all applicable laws and regulations in their jurisdiction.
+
+By using this software, you acknowledge and agree that:
+
+1. You will only use this software to recover wallets that you own or have
+   explicit legal authorization to recover.
+
+2. You will not use this software for any illegal activities, including but
+   not limited to unauthorized access to computer systems or data.
+
+3. You understand that attempting to recover wallets without proper
+   authorization may violate computer crime laws in your jurisdiction.
+
+4. The authors and contributors of this software are not responsible for any
+   misuse of the software or any legal consequences resulting from its use.
+
+5. This software is provided for educational and legitimate recovery purposes
+   only.
+
+6. You will comply with all applicable laws regarding computer security,
+   privacy, and data protection.
+
+DISCLAIMER:
+
+This software is provided "as is" without warranty of any kind. The authors
+make no guarantees about the software's ability to recover passwords or
+wallets. Cryptocurrency recovery is inherently uncertain, and there is no
+guarantee of success.
+
+Users assume all risks associated with the use of this software, including
+but not limited to:
+- Hardware damage from intensive computational operations
+- Data loss or corruption
+- Financial losses
+- Legal consequences from misuse
+
+The authors strongly recommend:
+- Testing the software in a safe environment before use
+- Backing up all important data before running recovery operations
+- Consulting with legal counsel if there are any questions about the
+  legality of wallet recovery in your jurisdiction
+- Using appropriate cooling and power management for intensive operations

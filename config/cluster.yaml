@@ -1,0 +1,56 @@
+# Cluster Deployment Configuration
+
+# Cluster settings
+cluster:
+  enabled: false
+  total_nodes: 1
+  node_id: 0
+  coordinator_host: "localhost"
+  coordinator_port: 8080
+  
+# Node configuration
+node:
+  cpu_cores: 0  # 0 = auto-detect
+  memory_limit: "8GB"
+  gpu_enabled: false
+  gpu_memory: "4GB"
+  
+# Work distribution
+distribution:
+  work_chunk_size: 1000000
+  progress_sync_interval: 30  # seconds
+  result_sync_interval: 5     # seconds
+  
+# Network settings
+network:
+  timeout: 30  # seconds
+  retry_attempts: 3
+  heartbeat_interval: 10  # seconds
+  
+# AWS EC2 specific settings
+aws:
+  region: "us-east-1"
+  instance_type: "c5.xlarge"
+  ami_id: "ami-0abcdef1234567890"
+  key_pair: "btc-recovery-key"
+  security_group: "btc-recovery-sg"
+  subnet_id: "subnet-12345678"
+  
+  # Auto-scaling
+  min_instances: 1
+  max_instances: 10
+  scale_up_threshold: 80    # CPU percentage
+  scale_down_threshold: 20  # CPU percentage
+  
+# Monitoring
+monitoring:
+  enabled: true
+  metrics_port: 9090
+  log_aggregation: true
+  alert_email: ""
+  
+# Security
+security:
+  ssh_key_path: "~/.ssh/btc-recovery.pem"
+  allowed_ips: ["0.0.0.0/0"]  # Restrict in production
+  encryption_enabled: true

@@ -1,0 +1,189 @@
+# Bitcoin Wallet Recovery - Git Ignore File
+
+# Build directories and artifacts
+build/
+bin/
+obj/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# CUDA compiled files
+*.ptx
+*.cubin
+*.fatbin
+
+# IDE and editor files
+.vscode/
+.vs/
+*.vcxproj*
+*.sln
+*.suo
+*.user
+*.swp
+*.swo
+*~
+.idea/
+*.iml
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+logs/
+temp/
+
+# Wallet files (NEVER commit actual wallet files)
+*.dat
+*.wallet
+wallet.*
+test_wallet.*
+example_wallet.*
+
+# Private keys and sensitive data
+*.pem
+*.key
+*.p12
+*.pfx
+private_keys/
+secrets/
+
+# Configuration files with sensitive data
+*_private.yaml
+*_secret.yaml
+*_credentials.yaml
+.env
+.env.local
+.env.production
+
+# Test results and coverage
+test_results/
+coverage/
+*.gcov
+*.gcda
+*.gcno
+
+# Package manager files
+node_modules/
+*.tgz
+*.tar.gz
+
+# Python cache (if any Python scripts are added)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Docker build context (keep Dockerfile)
+.dockerignore
+
+# AWS and cloud credentials
+.aws/
+*.pem
+aws-credentials.*
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Large files that shouldn't be in git
+*.iso
+*.img
+*.bin
+*.dump
+
+# Dictionary files (can be large)
+dictionaries/
+wordlists/
+*.txt.gz
+rockyou.txt
+common_passwords.txt
+
+# Results and output files
+results/
+output/
+recovery_results.*
+found_passwords.*
+
+# Cluster deployment temporary files
+cluster_config_*.yaml
+node_*.yaml
+
+# Performance profiling files
+*.prof
+*.perf
+callgrind.*
+massif.*
+
+# Documentation build artifacts
+docs/_build/
+docs/html/
+docs/latex/
+
+# Example wallet files (keep the .cpp files, not actual wallets)
+examples/*.dat
+examples/*.wallet
+
+# Local configuration overrides
+local_config.yaml
+my_config.yaml
+user_config.yaml
+
+# SSH keys
+id_rsa*
+id_ed25519*
+known_hosts
+
+# Certificate files
+*.crt
+*.cert
+*.ca-bundle
+
+# Compiled translations
+*.mo
+
+# Jupyter Notebook checkpoints (if any notebooks are added)
+.ipynb_checkpoints/
+
+# Local development scripts
+dev_*.sh
+test_*.sh
+local_*.sh
+
+# Memory dumps and core files
+core
+core.*
+*.dmp
+
+# Valgrind output
+vgcore.*
+
+# GDB history
+.gdb_history
+
+# LLDB history
+.lldb_history

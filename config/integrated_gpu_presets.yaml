@@ -1,0 +1,294 @@
+# Integrated GPU Configuration Presets
+# Optimized settings for various integrated graphics cards
+
+# Intel Integrated Graphics Presets
+intel:
+  # Intel HD Graphics (older generation)
+  hd_graphics:
+    name: "Intel HD Graphics"
+    opencl:
+      work_group_size: 64
+      global_work_size: 32768
+      buffer_size: "128MB"
+      batch_size: 1000
+      memory_usage_ratio: 0.5
+      compiler_options: "-cl-fast-relaxed-math -cl-mad-enable"
+    performance:
+      threads: 4
+      cpu_gpu_ratio: 0.7  # 70% CPU, 30% GPU
+      thermal_throttling: true
+      power_limit: 15  # watts
+    
+  # Intel Iris Graphics (mid-range)
+  iris_graphics:
+    name: "Intel Iris Graphics"
+    opencl:
+      work_group_size: 128
+      global_work_size: 65536
+      buffer_size: "256MB"
+      batch_size: 2500
+      memory_usage_ratio: 0.6
+      compiler_options: "-cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros"
+    performance:
+      threads: 6
+      cpu_gpu_ratio: 0.5  # 50% CPU, 50% GPU
+      thermal_throttling: true
+      power_limit: 28  # watts
+      
+  # Intel Arc Graphics (latest generation)
+  arc_graphics:
+    name: "Intel Arc Graphics"
+    opencl:
+      work_group_size: 256
+      global_work_size: 131072
+      buffer_size: "512MB"
+      batch_size: 5000
+      memory_usage_ratio: 0.7
+      compiler_options: "-cl-fast-relaxed-math -cl-mad-enable -cl-unsafe-math-optimizations"
+    performance:
+      threads: 8
+      cpu_gpu_ratio: 0.3  # 30% CPU, 70% GPU
+      thermal_throttling: true
+      power_limit: 35  # watts
+
+# AMD Integrated Graphics Presets
+amd:
+  # AMD Vega APU (Ryzen with Vega graphics)
+  vega_apu:
+    name: "AMD Radeon Vega (APU)"
+    opencl:
+      work_group_size: 128
+      global_work_size: 65536
+      buffer_size: "256MB"
+      batch_size: 2000
+      memory_usage_ratio: 0.6
+      compiler_options: "-cl-fast-relaxed-math -cl-mad-enable"
+    performance:
+      threads: 6
+      cpu_gpu_ratio: 0.4  # 40% CPU, 60% GPU
+      thermal_throttling: true
+      power_limit: 25  # watts
+      
+  # AMD RDNA APU (Ryzen 6000+ series)
+  rdna_apu:
+    name: "AMD Radeon RDNA (APU)"
+    opencl:
+      work_group_size: 192
+      global_work_size: 98304
+      buffer_size: "384MB"
+      batch_size: 3500
+      memory_usage_ratio: 0.7
+      compiler_options: "-cl-fast-relaxed-math -cl-mad-enable -cl-finite-math-only"
+    performance:
+      threads: 8
+      cpu_gpu_ratio: 0.3  # 30% CPU, 70% GPU
+      thermal_throttling: true
+      power_limit: 20  # watts
+
+# NVIDIA Integrated Graphics Presets
+nvidia:
+  # NVIDIA Tegra X1 (Shield TV, Jetson Nano)
+  tegra_x1:
+    name: "NVIDIA Tegra X1"
+    cuda:
+      threads_per_block: 128
+      blocks_per_grid: 64
+      shared_memory_size: 16384
+      batch_size: 1000
+      memory_usage_ratio: 0.6
+      enable_unified_memory: true
+      stream_count: 2
+    performance:
+      threads: 4
+      cpu_gpu_ratio: 0.5  # 50% CPU, 50% GPU
+      thermal_throttling: true
+      power_limit: 10  # watts
+      
+  # NVIDIA Tegra X2 (Jetson TX2)
+  tegra_x2:
+    name: "NVIDIA Tegra X2"
+    cuda:
+      threads_per_block: 192
+      blocks_per_grid: 96
+      shared_memory_size: 24576
+      batch_size: 2000
+      memory_usage_ratio: 0.65
+      enable_unified_memory: true
+      stream_count: 3
+    performance:
+      threads: 6
+      cpu_gpu_ratio: 0.4  # 40% CPU, 60% GPU
+      thermal_throttling: true
+      power_limit: 15  # watts
+      
+  # NVIDIA Tegra Xavier (Jetson Xavier)
+  tegra_xavier:
+    name: "NVIDIA Tegra Xavier"
+    cuda:
+      threads_per_block: 256
+      blocks_per_grid: 128
+      shared_memory_size: 32768
+      batch_size: 3000
+      memory_usage_ratio: 0.7
+      enable_unified_memory: true
+      stream_count: 4
+    performance:
+      threads: 8
+      cpu_gpu_ratio: 0.3  # 30% CPU, 70% GPU
+      thermal_throttling: true
+      power_limit: 20  # watts
+      
+  # NVIDIA Tegra Orin (Jetson Orin)
+  tegra_orin:
+    name: "NVIDIA Tegra Orin"
+    cuda:
+      threads_per_block: 256
+      blocks_per_grid: 256
+      shared_memory_size: 49152
+      batch_size: 5000
+      memory_usage_ratio: 0.75
+      enable_unified_memory: true
+      stream_count: 6
+    performance:
+      threads: 12
+      cpu_gpu_ratio: 0.2  # 20% CPU, 80% GPU
+      thermal_throttling: true
+      power_limit: 25  # watts
+      
+  # NVIDIA MX Series (laptop integrated)
+  mx_series:
+    name: "NVIDIA MX Series"
+    cuda:
+      threads_per_block: 192
+      blocks_per_grid: 96
+      shared_memory_size: 24576
+      batch_size: 2500
+      memory_usage_ratio: 0.7
+      enable_unified_memory: false
+      stream_count: 3
+    performance:
+      threads: 6
+      cpu_gpu_ratio: 0.4  # 40% CPU, 60% GPU
+      thermal_throttling: true
+      power_limit: 25  # watts
+
+# Apple Silicon Presets
+apple:
+  # Apple M1 GPU
+  m1_gpu:
+    name: "Apple M1 GPU"
+    metal:  # Apple uses Metal instead of OpenCL/CUDA
+      threadgroup_size: 256
+      threadgroups_per_grid: 512
+      buffer_size: "1GB"
+      batch_size: 8000
+      memory_usage_ratio: 0.8
+    performance:
+      threads: 8
+      cpu_gpu_ratio: 0.2  # 20% CPU, 80% GPU
+      thermal_throttling: true
+      power_limit: 10  # watts
+      
+  # Apple M2 GPU
+  m2_gpu:
+    name: "Apple M2 GPU"
+    metal:
+      threadgroup_size: 256
+      threadgroups_per_grid: 640
+      buffer_size: "1.5GB"
+      batch_size: 10000
+      memory_usage_ratio: 0.8
+    performance:
+      threads: 8
+      cpu_gpu_ratio: 0.15  # 15% CPU, 85% GPU
+      thermal_throttling: true
+      power_limit: 12  # watts
+      
+  # Apple M3 GPU
+  m3_gpu:
+    name: "Apple M3 GPU"
+    metal:
+      threadgroup_size: 256
+      threadgroups_per_grid: 768
+      buffer_size: "2GB"
+      batch_size: 12000
+      memory_usage_ratio: 0.85
+    performance:
+      threads: 8
+      cpu_gpu_ratio: 0.1  # 10% CPU, 90% GPU
+      thermal_throttling: true
+      power_limit: 15  # watts
+
+# Laptop-specific optimizations
+laptop_optimizations:
+  # Battery mode (maximum power efficiency)
+  battery_mode:
+    performance_scaling: 0.5  # Reduce performance by 50%
+    thermal_limit: 70  # Celsius
+    power_limit_reduction: 0.3  # Reduce power limit by 30%
+    enable_aggressive_throttling: true
+    
+  # Balanced mode (default for laptops)
+  balanced_mode:
+    performance_scaling: 0.8  # Reduce performance by 20%
+    thermal_limit: 80  # Celsius
+    power_limit_reduction: 0.1  # Reduce power limit by 10%
+    enable_aggressive_throttling: false
+    
+  # Performance mode (maximum performance)
+  performance_mode:
+    performance_scaling: 1.0  # Full performance
+    thermal_limit: 90  # Celsius
+    power_limit_reduction: 0.0  # No power limit reduction
+    enable_aggressive_throttling: false
+
+# Auto-detection rules
+auto_detection:
+  # Rules for automatic GPU detection and configuration
+  rules:
+    - condition: "vendor == 'Intel' && name.contains('HD')"
+      preset: "intel.hd_graphics"
+    - condition: "vendor == 'Intel' && name.contains('Iris')"
+      preset: "intel.iris_graphics"
+    - condition: "vendor == 'Intel' && name.contains('Arc')"
+      preset: "intel.arc_graphics"
+    - condition: "vendor == 'AMD' && name.contains('Vega')"
+      preset: "amd.vega_apu"
+    - condition: "vendor == 'AMD' && (name.contains('RDNA') || name.contains('6000') || name.contains('7000'))"
+      preset: "amd.rdna_apu"
+    - condition: "vendor == 'NVIDIA' && name.contains('Tegra X1')"
+      preset: "nvidia.tegra_x1"
+    - condition: "vendor == 'NVIDIA' && name.contains('Tegra X2')"
+      preset: "nvidia.tegra_x2"
+    - condition: "vendor == 'NVIDIA' && name.contains('Xavier')"
+      preset: "nvidia.tegra_xavier"
+    - condition: "vendor == 'NVIDIA' && name.contains('Orin')"
+      preset: "nvidia.tegra_orin"
+    - condition: "vendor == 'NVIDIA' && name.contains('MX')"
+      preset: "nvidia.mx_series"
+    - condition: "vendor == 'Apple' && name.contains('M1')"
+      preset: "apple.m1_gpu"
+    - condition: "vendor == 'Apple' && name.contains('M2')"
+      preset: "apple.m2_gpu"
+    - condition: "vendor == 'Apple' && name.contains('M3')"
+      preset: "apple.m3_gpu"
+      
+  # Fallback settings for unknown integrated GPUs
+  fallback:
+    opencl:
+      work_group_size: 64
+      global_work_size: 32768
+      buffer_size: "128MB"
+      batch_size: 1000
+      memory_usage_ratio: 0.5
+    cuda:
+      threads_per_block: 128
+      blocks_per_grid: 64
+      shared_memory_size: 16384
+      batch_size: 1000
+      memory_usage_ratio: 0.5
+    performance:
+      threads: 4
+      cpu_gpu_ratio: 0.6
+      thermal_throttling: true
+      power_limit: 20

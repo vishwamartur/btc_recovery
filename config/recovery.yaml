@@ -1,0 +1,39 @@
+# Bitcoin Wallet Recovery Configuration
+
+# Wallet settings
+wallet_file: ""
+wallet_type: "auto"  # auto, bitcoin_core, electrum, multibit, bip38
+
+# Password generation settings
+charset: "mixed"  # lowercase, uppercase, digits, symbols, mixed, custom
+custom_charset: ""
+min_length: 6
+max_length: 12
+prefix: ""
+suffix: ""
+
+# Dictionary settings
+dictionary_file: ""
+rules_file: ""
+
+# Performance settings
+threads: 0  # 0 = auto-detect
+batch_size: 10000
+
+# GPU settings
+use_gpu: false
+gpu_threads: 1024
+gpu_device: 0
+
+# Output settings
+output_file: "recovery_results.txt"
+log_level: "info"  # debug, info, warn, error
+progress_interval: 10  # seconds
+
+# Recovery settings
+recovery_mode: "brute_force"  # brute_force, dictionary, hybrid, gpu_only
+
+# Cluster settings
+cluster_mode: false
+cluster_node_id: 0
+cluster_total_nodes: 1

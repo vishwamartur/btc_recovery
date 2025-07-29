@@ -1,0 +1,158 @@
+# GPU Acceleration Configuration
+
+# CUDA settings
+cuda:
+  enabled: true
+  device_id: 0
+  threads_per_block: 256
+  blocks_per_grid: 1024
+  shared_memory_size: 48000  # bytes
+
+  # Memory management
+  memory_pool_size: "1GB"
+  batch_size: 100000
+
+  # Optimization
+  use_fast_math: true
+  optimize_for_compute_capability: true
+
+  # Integrated GPU specific settings
+  integrated:
+    auto_detect: true
+    enable_unified_memory: true
+    enable_thermal_throttling: true
+    power_efficiency_mode: true
+
+    # Tegra/Jetson optimizations
+    tegra:
+      threads_per_block: 128
+      blocks_per_grid: 64
+      shared_memory_size: 16384
+      batch_size: 1000
+      memory_usage_ratio: 0.6
+      stream_count: 2
+
+    # Mobile GPU optimizations (MX series, mobile GTX)
+    mobile:
+      threads_per_block: 192
+      blocks_per_grid: 96
+      shared_memory_size: 24576
+      batch_size: 2500
+      memory_usage_ratio: 0.7
+      stream_count: 3
+
+    # ARM integrated optimizations
+    arm_integrated:
+      threads_per_block: 64
+      blocks_per_grid: 32
+      shared_memory_size: 8192
+      batch_size: 500
+      memory_usage_ratio: 0.5
+      stream_count: 1
+  
+# OpenCL settings
+opencl:
+  enabled: true
+  platform_id: 0
+  device_id: 0
+  work_group_size: 256
+  global_work_size: 262144
+
+  # Memory management
+  buffer_size: "512MB"
+  batch_size: 50000
+
+  # Optimization
+  use_native_functions: true
+  compiler_options: "-cl-fast-relaxed-math"
+
+  # Integrated GPU specific settings
+  integrated:
+    auto_detect: true
+    enable_memory_pooling: true
+    enable_thermal_monitoring: true
+
+    # Intel integrated graphics optimizations
+    intel:
+      hd_graphics:
+        work_group_size: 64
+        global_work_size: 32768
+        buffer_size: "128MB"
+        batch_size: 1000
+        compiler_options: "-cl-fast-relaxed-math -cl-mad-enable"
+
+      iris_graphics:
+        work_group_size: 128
+        global_work_size: 65536
+        buffer_size: "256MB"
+        batch_size: 2500
+        compiler_options: "-cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros"
+
+      arc_graphics:
+        work_group_size: 256
+        global_work_size: 131072
+        buffer_size: "512MB"
+        batch_size: 5000
+        compiler_options: "-cl-fast-relaxed-math -cl-mad-enable -cl-unsafe-math-optimizations"
+
+    # AMD integrated graphics optimizations
+    amd:
+      vega_apu:
+        work_group_size: 128
+        global_work_size: 65536
+        buffer_size: "256MB"
+        batch_size: 2000
+        compiler_options: "-cl-fast-relaxed-math -cl-mad-enable"
+
+      rdna_apu:
+        work_group_size: 192
+        global_work_size: 98304
+        buffer_size: "384MB"
+        batch_size: 3500
+        compiler_options: "-cl-fast-relaxed-math -cl-mad-enable -cl-finite-math-only"
+
+    # Apple Silicon optimizations (legacy OpenCL support)
+    apple:
+      m1_gpu:
+        work_group_size: 256
+        global_work_size: 131072
+        buffer_size: "1GB"
+        batch_size: 8000
+        compiler_options: "-cl-fast-relaxed-math"
+
+      m2_gpu:
+        work_group_size: 256
+        global_work_size: 163840
+        buffer_size: "1.5GB"
+        batch_size: 10000
+        compiler_options: "-cl-fast-relaxed-math -cl-mad-enable"
+  
+# Multi-GPU settings
+multi_gpu:
+  enabled: false
+  devices: [0, 1]  # GPU device IDs to use
+  load_balancing: "round_robin"  # round_robin, performance_based
+  
+# Performance tuning
+performance:
+  benchmark_on_startup: true
+  auto_tune_parameters: true
+  profile_kernels: false
+  
+  # Fallback settings
+  fallback_to_cpu: true
+  cpu_gpu_ratio: 0.1  # 10% CPU, 90% GPU
+  
+# Supported algorithms
+algorithms:
+  aes_256_cbc: true
+  aes_256_ctr: true
+  scrypt: true
+  pbkdf2: true
+  sha256: true
+  
+# Memory limits
+memory:
+  max_gpu_memory_usage: 0.8  # 80% of available GPU memory
+  host_memory_buffer: "2GB"
+  pinned_memory: true
